@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import os
 import sys
 import re
 import requests
@@ -9,7 +10,11 @@ if __name__ == '__main__' :
     if len(sys.argv) < 3:
         print('Usage: python3 crawl.py weiboname pagelimit \r\n  e.g. python3 crawl.py yangmiblog 5')
         sys.exit(0);
-
+    
+    
+    if not os.path.exists('./' + sys.argv[1]) :
+        os.mkdir(sys.argv[1])
+    
     s = requests.Session()
     p = re.compile(".*(\\{'stage': .*?\"stage\":\"page\"\\}\\}).*")
     r = s.get('http://weibo.com/' + sys.argv[1], headers={'User-Agent' : 'Mozilla/5.0 (Mobile; Android 4.0; ARM; like iPhone OS 7_0_3 Mac OS X AppleWebKit/537 (KHTML, like Gecko) Mobile Safari/537'})
