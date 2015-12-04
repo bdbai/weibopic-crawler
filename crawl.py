@@ -44,7 +44,8 @@ if __name__ == '__main__' :
             itemid = i['async_api'][18:34]
             print('Found item id: ' + itemid)
             break
-    for page in range(int(page_limit)) :
+    for page_index in range(int(page_limit)) :
+        page = page_index + 1
         print('Enter page: ' + str(page))
         page = s.get('http://m.weibo.cn/page/json?containerid=' + itemid + '_-_WEIBO_SECOND_PROFILE_WEIBO&page=' + str(page))
         for i in json.loads(page.text)['cards'][0]['card_group'] :
