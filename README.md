@@ -10,6 +10,7 @@ pip install requests
 
 Usage:
 ```bash
-python3 crawl.py weiboname pagelimit
+python3 [-f] crawl.py weiboname pagelimit
 ```
+`-f`: Delete all downloaded pics in the specified weibo.
 
