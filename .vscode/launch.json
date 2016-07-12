@@ -1,0 +1,31 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Crawl",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "pythonPath": "python3",
+            "debugOptions": [
+                "WaitOnAbnormalExit",
+                "WaitOnNormalExit",
+                "RedirectOutput"
+            ],
+            "args": ["yangmiblog", "3"]
+        },
+        {
+            "name": "Force Crawl",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "pythonPath": "python3",
+            "debugOptions": [
+                "WaitOnAbnormalExit",
+                "WaitOnNormalExit",
+                "RedirectOutput"
+            ],
+            "args": ["-f", "yangmiblog", "3"]
+        }
+    ]
+}
