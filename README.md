@@ -5,7 +5,7 @@ Dependencies:
 - requests
 
 ```bash
-pip install requests
+pip3 install -r requirements.txt
 ```
 
 Usage:

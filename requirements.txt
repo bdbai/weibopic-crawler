@@ -1,0 +1,3 @@
+--index https://pypi.python.org/simple/
+
+requests~=2.1.0
