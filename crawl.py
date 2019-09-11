@@ -6,12 +6,11 @@ import requests
 import json
 from argparse import ArgumentParser
 from contextlib import closing
+from urllib.parse import parse_qs, unquote
 
 COMMON_REQUEST_HEADER = { 'User-Agent' : 'Mozilla/5.0 (Mobile; Android 4.0; ARM; like iPhone OS 7_0_3 Mac OS X AppleWebKit/537 (KHTML, like Gecko) Mobile Safari/537' }
-ITEM_JSON_REGEX = re.compile(".*(\\{'stage': .*?\"stage\":\"page\"\\}\\}).*")
 USER_URL_PATTERN = 'http://weibo.com/{0}'
-PAGE_URL_PATTERN = 'http://m.weibo.cn/page/json?containerid={0}_-_WEIBO_SECOND_PROFILE_WEIBO&page={1}'
-PIC_URL_PATTERN = 'http://ww2.sinaimg.cn/large/{0}.jpg'
+PAGE_URL_PATTERN = 'https://m.weibo.cn/api/container/getIndex?type=uid&value={0}&containerid={1}&page={2}'
 
 class WeibopicCrawler(object):
     """Crawler for the specific Weibo user."""
@@ -59,31 +58,36 @@ class WeibopicCrawler(object):
             return self.item_id
 
         response = self.request_session.get(USER_URL_PATTERN.format(self.weibo_name), headers=COMMON_REQUEST_HEADER)
-        internal_json = ITEM_JSON_REGEX.match(response.text).group(1).replace("'", '"')
-        cards = json.loads(internal_json)['stage']['page'][2]['card_group']
+        weibo_params_str = unquote(response.cookies.get('M_WEIBOCN_PARAMS'))
+        weibo_params = parse_qs(weibo_params_str)
+        head_card_id = weibo_params['fid'][0]
 
-        api_card = [card for card in cards if card['card_type'] == 11][0]
-        self.item_id = api_card['async_api'][18:34]
+        response = self.request_session.get(PAGE_URL_PATTERN.format(self.weibo_name, head_card_id, ''), headers=COMMON_REQUEST_HEADER)
+        container_id = [t['containerid'] for t in response.json()['data']['tabsInfo']['tabs'] if t['tabKey'] == 'weibo']
+
+        self.item_id = container_id[0]
         self.log('Found item id: ' + self.item_id)
         return self.item_id
 
-    def get_pics_from_page(self, page_id):
-        """Yields all pic IDs from the specific page."""
-        response = self.request_session.get(PAGE_URL_PATTERN.format(self.item_id, page_id))
-        for weibo in json.loads(response.text)['cards'][0]['card_group']:
-            pic_ids = weibo['mblog']['pic_ids']
-            for pic_id in pic_ids:
-                yield pic_id
+    def get_pics_info_from_page(self, page_id):
+        """Yields all pic info from the specific page."""
+        response = self.request_session.get(PAGE_URL_PATTERN.format(self.weibo_name, self.item_id, page_id))
+        for weibo in response.json()['data']['cards']:
+            if 'pics' in weibo['mblog']:
+                pics = weibo['mblog']['pics']
+                yield from pics
 
-    def download_pic(self, pic_id):
+    def download_pic(self, pic_info):
         """Save the pic to disk."""
+        pic_id = pic_info['pid']
+        pic_url = pic_info['large']['url']
         file_name = '{0}/{1}.jpg'.format(self.weibo_name, pic_id)
         if os.path.exists(file_name):
             self.log('Skipped: ' + pic_id)
         else:
             self.log('Downloading pic: ' + pic_id, '')
             with open(self.temp_file, 'wb') as file:
-                with closing(self.request_session.get(PIC_URL_PATTERN.format(pic_id), stream=True)) as response_stream:
+                with closing(self.request_session.get(pic_url, stream=True)) as response_stream:
                     for chunk in response_stream.iter_content(5120):
                         file.write(chunk)
             os.rename(self.temp_file, file_name)
@@ -96,8 +100,8 @@ class WeibopicCrawler(object):
         """
         self.get_user_item_id()
         self.log('Entering page ' + str(page_id))
-        for pic_id in self.get_pics_from_page(page_id):
-            self.download_pic(pic_id)
+        for pic_info in self.get_pics_info_from_page(page_id):
+            self.download_pic(pic_info)
 
 def get_options():
     """Parse command line arguments."""
