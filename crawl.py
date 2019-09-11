@@ -15,16 +15,18 @@ PAGE_URL_PATTERN = 'https://m.weibo.cn/api/container/getIndex?type=uid&value={0}
 class WeibopicCrawler(object):
     """Crawler for the specific Weibo user."""
 
-    def __init__(self, weibo_name, force = False):
+    def __init__(self, weibo_name, force = False, include_retweet = False):
         """Initialize a new crawler object.
 
         ``weibo_name`` is either a user's Weibo name or his ID. Will be
         appended to the end of 'weibo.com/' directly.
         ``force`` will clean any pics downloaded from the user immediately if
         is set to ``True``.
+        ``include_retweet`` will include pictures from retweets.
         """
         self.item_id = None
         self.weibo_name = weibo_name
+        self.include_retweet = include_retweet
         if force:
             self.clear_cache()
         self.ensure_dir()
@@ -69,13 +71,19 @@ class WeibopicCrawler(object):
         self.log('Found item id: ' + self.item_id)
         return self.item_id
 
+    def get_pics_info_from_mblog(self, mblog):
+        """Yields all pic info from the mblog"""
+        if 'pics' in mblog:
+            yield from mblog['pics']
+
     def get_pics_info_from_page(self, page_id):
         """Yields all pic info from the specific page."""
         response = self.request_session.get(PAGE_URL_PATTERN.format(self.weibo_name, self.item_id, page_id))
         for weibo in response.json()['data']['cards']:
-            if 'pics' in weibo['mblog']:
-                pics = weibo['mblog']['pics']
-                yield from pics
+            mblog = weibo['mblog']
+            yield from self.get_pics_info_from_mblog(mblog)
+            if self.include_retweet and 'retweeted_status' in mblog:
+                yield from self.get_pics_info_from_mblog(mblog['retweeted_status'])
 
     def download_pic(self, pic_info):
         """Save the pic to disk."""
@@ -107,13 +115,14 @@ def get_options():
     """Parse command line arguments."""
     parser = ArgumentParser()
     parser.add_argument('-f', '--force', dest='force', action='store_true', help='Clear cache before downloading')
+    parser.add_argument('--retweet', dest='include_retweet', action='store_true', help='Include retweets')
     parser.add_argument('weibo_name', metavar='ID', type=str, help='Weibo name or number')
     parser.add_argument('maxpage', metavar='N', type=int, help='Maximum pages to crawl')
     return parser.parse_args()
 
 def main():
     options = get_options()
-    crawler = WeibopicCrawler(options.weibo_name, options.force)
+    crawler = WeibopicCrawler(options.weibo_name, options.force, options.include_retweet)
     for page_id in range(options.maxpage):
         try:
             crawler.crawl_page(page_id + 1)
