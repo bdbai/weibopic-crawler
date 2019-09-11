@@ -10,7 +10,9 @@ pip3 install -r requirements.txt
 
 Usage:
 ```bash
-python3 crawl.py [-f] weiboname pagelimit
+python3 crawl.py [-f] [--retweet] ID N
 ```
-`-f`: Delete all downloaded pics in the specified weibo.
-
+- `-f`, `--force`: Clear cache before downloading
+- `--retweet`: Include retweets
+- `ID`: personal url codename (`liaoxuefeng`) or number ID (`1658384301`)
+- `N`: Maximum page count
